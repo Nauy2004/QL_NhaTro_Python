@@ -1,0 +1,1 @@
+#Để import file từ Apl sang TrangChu.py
