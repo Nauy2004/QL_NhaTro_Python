@@ -62,12 +62,13 @@ def quan_ly_hoa_don(parent_frame):
     frame_hoa_don.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
     
     # Tạo Treeview để hiển thị hóa đơn
-    columns = ('MaHoaDon', 'MaHD' , 'CCCD' , 'HoTen', 'SoTien', 'NgayLap' )
+    columns = ('MaHoaDon', 'MaHD' ,'MaPhong', 'CCCD' , 'HoTen', 'SoTien', 'NgayLap' )
     tree_hoa_don = ttk.Treeview(frame_hoa_don, columns=columns, show='headings')
     
     # Định nghĩa tiêu đề các cột
     tree_hoa_don.heading('MaHoaDon', text='Mã Hóa Đơn')
     tree_hoa_don.heading('MaHD', text='Mã Hợp Đồng')
+    tree_hoa_don.heading('MaPhong', text='Mã Phòng')
     tree_hoa_don.heading('NgayLap', text='Ngày Lập')
     tree_hoa_don.heading('SoTien', text='Số Tiền')
     tree_hoa_don.heading('HoTen', text='Họ Tên Người Thuê')
@@ -76,6 +77,7 @@ def quan_ly_hoa_don(parent_frame):
     # Định nghĩa độ rộng các cột
     tree_hoa_don.column('MaHoaDon', width=100, anchor=tk.CENTER)
     tree_hoa_don.column('MaHD', width=100, anchor=tk.CENTER)
+    tree_hoa_don.column('MaPhong', width=100, anchor=tk.CENTER)
     tree_hoa_don.column('NgayLap', width=150, anchor=tk.CENTER)
     tree_hoa_don.column('SoTien', width=150, anchor=tk.CENTER)
     tree_hoa_don.column('HoTen', width=200, anchor=tk.W)
@@ -118,25 +120,25 @@ def quan_ly_hoa_don(parent_frame):
     frame_col2 = tk.Frame(frame_info)
     frame_col2.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
     
-    tk.Label(frame_col2, text="Mã hợp đồng:").grid(row=0, column=0, sticky=tk.W, pady=2)
-    lbl_ma_hd = tk.Label(frame_col2, text="", width=20)
-    lbl_ma_hd.grid(row=0, column=1, sticky=tk.W, pady=2)
+    tk.Label(frame_col2, text="Mã Phòng:").grid(row=0, column=0, sticky=tk.W, pady=2)
+    lbl_ma_p = tk.Label(frame_col2, text="", width=20)
+    lbl_ma_p.grid(row=0, column=1, sticky=tk.W, pady=2)
     
     tk.Label(frame_col2, text="Người thuê:").grid(row=1, column=0, sticky=tk.W, pady=2)
     lbl_ho_ten = tk.Label(frame_col2, text="", width=20)
     lbl_ho_ten.grid(row=1, column=1, sticky=tk.W, pady=2)
     
-    tk.Label(frame_col2, text="CCCD:").grid(row=2, column=0, sticky=tk.W, pady=2)
-    lbl_cccd = tk.Label(frame_col2, text="", width=20)
-    lbl_cccd.grid(row=2, column=1, sticky=tk.W, pady=2)
+    tk.Label(frame_col2, text="Giá phòng:").grid(row=2, column=0, sticky=tk.W, pady=2)
+    lbl_gia_phong = tk.Label(frame_col2, text="", width=20)
+    lbl_gia_phong.grid(row=2, column=1, sticky=tk.W, pady=2)
     
     # Cột 3
     frame_col3 = tk.Frame(frame_info)
     frame_col3.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
     
-    tk.Label(frame_col3, text="Giá phòng:").grid(row=0, column=0, sticky=tk.W, pady=2)
-    lbl_gia_phong = tk.Label(frame_col3, text="", width=20)
-    lbl_gia_phong.grid(row=0, column=1, sticky=tk.W, pady=2)
+    tk.Label(frame_col3, text="Mã hợp đồng:").grid(row=0, column=0, sticky=tk.W, pady=2)
+    lbl_ma_hd = tk.Label(frame_col3, text="", width=20)
+    lbl_ma_hd.grid(row=0, column=1, sticky=tk.W, pady=2)
     
     tk.Label(frame_col3, text="Thời gian BĐ:").grid(row=1, column=0, sticky=tk.W, pady=2)
     lbl_thoi_gian_bd = tk.Label(frame_col3, text="", width=20)
@@ -152,15 +154,15 @@ def quan_ly_hoa_don(parent_frame):
             # Lấy ID của item được chọn
             item = tree_hoa_don.item(selected_item)
             record = item['values']
-            
+            print(record)
             # Hiển thị thông tin
             lbl_ma_hoa_don.config(text=record[0])
             lbl_ma_hd.config(text=record[1])
-            lbl_cccd.config(text=record[2])
+            lbl_ma_p.config(text=record[2])
             lbl_ho_ten.config(text=record[3])
-            lbl_so_tien.config(text=f"{record[4]:} VNĐ")
-            lbl_ngay_lap.config(text=record[5])
-            lbl_gia_phong.config(text=f"{record[6]:} VNĐ")
+            lbl_so_tien.config(text=f"{record[5]:} VNĐ")
+            lbl_ngay_lap.config(text=record[6])
+            lbl_gia_phong.config(text=f"{record[7]:} VNĐ")
             
             # Lấy thông tin thời gian từ DB
             conn = ket_noi_csdl()
@@ -187,9 +189,6 @@ def quan_ly_hoa_don(parent_frame):
     
     btn_issue_multiple_invoices = tk.Button(frame_new_buttons, text="Phát hành Nhiều Hóa Đơn", command=lambda: issue_multiple_invoices(tree_hoa_don))
     btn_issue_multiple_invoices.pack(side=tk.LEFT, padx=5)
-    
-    btn_another_function = tk.Button(frame_new_buttons, text="Chức năng khác", command=lambda: another_function(tree_hoa_don))
-    btn_another_function.pack(side=tk.LEFT, padx=5)
 
     return parent_frame
 
@@ -208,10 +207,11 @@ def refresh_data(tree):
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT h.MaHoaDon, h.MaHD, n.CCCD, n.HoTen,
-               h.SoTien, h.NgayLap, hd.GiaPhong
+        SELECT h.MaHoaDon, h.MaHD, hd.MaPhong, n.CCCD, n.HoTen,
+               h.SoTien, h.NgayLap, p.GiaPhong
         FROM HoaDon h
         JOIN HopDong hd ON h.MaHD = hd.MaHD
+        JOIN PhongTro p ON hd.MaPhong = p.MaPhong
         JOIN NguoiThue n ON hd.CCCD = n.CCCD
         ORDER BY h.NgayLap DESC
     ''')
@@ -236,7 +236,8 @@ def refresh_data(tree):
             record[3], 
             record[4], 
             record[5], 
-            record[6]
+            record[6],
+            record[7]
         ))
 
 # Hàm tìm kiếm hóa đơn - đã sửa để sử dụng hàm ket_noi_csdl
@@ -251,9 +252,10 @@ def search_bills(ma_hoa_don, tu_ngay, den_ngay, tree):
     
     query = '''
         SELECT h.MaHoaDon, h.NgayLap, h.SoTien, h.MaHD, 
-               n.HoTen, n.CCCD, hd.GiaPhong
+               n.HoTen, n.CCCD, p.GiaPhong
         FROM HoaDon h
         JOIN HopDong hd ON h.MaHD = hd.MaHD
+        JOIN PhongTro p ON hd.MaPhong = p.MaPhong
         JOIN NguoiThue n ON hd.CCCD = n.CCCD
         WHERE 1=1
     '''
@@ -362,9 +364,10 @@ def show_bill_form(edit_data, tree):
             conn = ket_noi_csdl()
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT hd.GiaPhong, n.HoTen, n.CCCD
+                SELECT p.GiaPhong, n.HoTen, n.CCCD
                 FROM HopDong hd
                 JOIN NguoiThue n ON hd.CCCD = n.CCCD
+                JOIN PhongTro p ON hd.MaPhong = p.MaPhong
                 WHERE hd.MaHD = ?
             ''', (ma_hd,))
             info = cursor.fetchone()
@@ -394,7 +397,7 @@ def show_bill_form(edit_data, tree):
         except:
             pass
         
-        entry_so_tien.insert(0, edit_data[2])
+        entry_so_tien.insert(0, edit_data[5])
         
         # Chọn hợp đồng trong combobox
         for i, ma_hd in enumerate(hop_dong_ids):
