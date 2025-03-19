@@ -4,8 +4,12 @@ import sqlite3
 from datetime import datetime
 from tkcalendar import DateEntry
 import openpyxl
-from openpyxl.styles import Font
+from openpyxl.styles import Font, Border, Side, Alignment
+
 from tkinter import ttk, messagebox, filedialog
+
+# Định dạng tiền tệ VND
+FORMAT_CURRENCY_VND = '#,##0 ₫'
 
 def quan_ly_hoa_don(parent_frame): 
     for widget in parent_frame.winfo_children():
@@ -58,26 +62,24 @@ def quan_ly_hoa_don(parent_frame):
     frame_hoa_don.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
     
     # Tạo Treeview để hiển thị hóa đơn
-    columns = ('MaHoaDon', 'NgayLap', 'SoTien', 'MaHD', 'HoTen', 'CCCD', 'GiaPhong')
+    columns = ('MaHoaDon', 'MaHD' , 'CCCD' , 'HoTen', 'SoTien', 'NgayLap' )
     tree_hoa_don = ttk.Treeview(frame_hoa_don, columns=columns, show='headings')
     
     # Định nghĩa tiêu đề các cột
     tree_hoa_don.heading('MaHoaDon', text='Mã Hóa Đơn')
+    tree_hoa_don.heading('MaHD', text='Mã Hợp Đồng')
     tree_hoa_don.heading('NgayLap', text='Ngày Lập')
     tree_hoa_don.heading('SoTien', text='Số Tiền')
-    tree_hoa_don.heading('MaHD', text='Mã Hợp Đồng')
     tree_hoa_don.heading('HoTen', text='Họ Tên Người Thuê')
     tree_hoa_don.heading('CCCD', text='CCCD')
-    tree_hoa_don.heading('GiaPhong', text='Giá Phòng')
     
     # Định nghĩa độ rộng các cột
     tree_hoa_don.column('MaHoaDon', width=100, anchor=tk.CENTER)
+    tree_hoa_don.column('MaHD', width=100, anchor=tk.CENTER)
     tree_hoa_don.column('NgayLap', width=150, anchor=tk.CENTER)
     tree_hoa_don.column('SoTien', width=150, anchor=tk.CENTER)
-    tree_hoa_don.column('MaHD', width=100, anchor=tk.CENTER)
     tree_hoa_don.column('HoTen', width=200, anchor=tk.W)
     tree_hoa_don.column('CCCD', width=120, anchor=tk.CENTER)
-    tree_hoa_don.column('GiaPhong', width=150, anchor=tk.CENTER)
     
     # Thêm thanh cuộn
     scrollbar = ttk.Scrollbar(frame_hoa_don, orient=tk.VERTICAL, command=tree_hoa_don.yview)
@@ -153,11 +155,11 @@ def quan_ly_hoa_don(parent_frame):
             
             # Hiển thị thông tin
             lbl_ma_hoa_don.config(text=record[0])
-            lbl_ngay_lap.config(text=record[1])
-            lbl_so_tien.config(text=f"{record[2]:} VNĐ")
-            lbl_ma_hd.config(text=record[3])
-            lbl_ho_ten.config(text=record[4])
-            lbl_cccd.config(text=record[5])
+            lbl_ma_hd.config(text=record[1])
+            lbl_cccd.config(text=record[2])
+            lbl_ho_ten.config(text=record[3])
+            lbl_so_tien.config(text=f"{record[4]:} VNĐ")
+            lbl_ngay_lap.config(text=record[5])
             lbl_gia_phong.config(text=f"{record[6]:} VNĐ")
             
             # Lấy thông tin thời gian từ DB
@@ -165,7 +167,7 @@ def quan_ly_hoa_don(parent_frame):
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT ThoiGianBD, ThoiGianKT FROM HopDong WHERE MaHD = ?
-            ''', (record[3],))
+            ''', (record[1],))
             hop_dong_info = cursor.fetchone()
             conn.close()
             
@@ -176,7 +178,21 @@ def quan_ly_hoa_don(parent_frame):
     # Gắn sự kiện khi click vào một hàng trong bảng
     tree_hoa_don.bind('<<TreeviewSelect>>', item_selected)
     
+    # Frame cho các nút chức năng mới
+    frame_new_buttons = tk.Frame(parent_frame)
+    frame_new_buttons.pack(side=tk.RIGHT, padx=10, pady=10)
+    
+    btn_issue_invoice = tk.Button(frame_new_buttons, text="Phát hành Hóa Đơn", command=lambda: issue_invoice(tree_hoa_don))
+    btn_issue_invoice.pack(side=tk.LEFT, padx=5)
+    
+    btn_issue_multiple_invoices = tk.Button(frame_new_buttons, text="Phát hành Nhiều Hóa Đơn", command=lambda: issue_multiple_invoices(tree_hoa_don))
+    btn_issue_multiple_invoices.pack(side=tk.LEFT, padx=5)
+    
+    btn_another_function = tk.Button(frame_new_buttons, text="Chức năng khác", command=lambda: another_function(tree_hoa_don))
+    btn_another_function.pack(side=tk.LEFT, padx=5)
+
     return parent_frame
+
 # Hàm kết nối CSDL
 def ket_noi_csdl():
     return sqlite3.connect("../Data/BTL_QLPT.db")
@@ -192,8 +208,8 @@ def refresh_data(tree):
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT h.MaHoaDon, h.NgayLap, h.SoTien, h.MaHD, 
-               n.HoTen, n.CCCD, hd.GiaPhong
+        SELECT h.MaHoaDon, h.MaHD, n.CCCD, n.HoTen,
+               h.SoTien, h.NgayLap, hd.GiaPhong
         FROM HoaDon h
         JOIN HopDong hd ON h.MaHD = hd.MaHD
         JOIN NguoiThue n ON hd.CCCD = n.CCCD
@@ -538,6 +554,111 @@ def export_to_excel(tree):
     except Exception as e:
         messagebox.showerror("Lỗi", f"Có lỗi khi xuất Excel: {str(e)}")
 
+# Hàm phát hành hóa đơn
+def issue_invoice(tree):
+    selected_items = tree.selection()
+    print(selected_items)
+    if not selected_items:
+        messagebox.showwarning("Cảnh báo", "Vui lòng chọn hóa đơn cần phát hành!")
+        return
+    
+    data = tree.item(selected_items[0], 'values')
+    try:
+        conn = ket_noi_csdl()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT h.MaHoaDon, h.MaHD, n.CCCD, n.HoTen,
+                   h.SoTien, h.NgayLap, hd.GiaPhong
+            FROM HoaDon h
+            JOIN HopDong hd ON h.MaHD = hd.MaHD
+            JOIN NguoiThue n ON hd.CCCD = n.CCCD
+            WHERE h.MaHoaDon = ?
+            ORDER BY h.NgayLap DESC
+        ''',(data[0],))
+        
+        records = cursor.fetchall()
+        conn.close()
+        
+        if not records:
+            messagebox.showinfo("Thông báo", "Không có dữ liệu để xuất.")
+            return
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        
+        # Thông tin nhà trọ
+        ws['B2'] = 'Công Ty TNHH ABC'
+        ws['B3'] = 'Địa chỉ: 123 Đường XYZ, Quận 1, TP.HCM'
+        ws['B4'] = 'Điện thoại: 01234567890'
+        
+        # thông tin hóa đơn
+        ws['B6'] = 'Mã hóa đơn'
+        ws['C6'] = data[0]
+        ws['B7'] = 'Mã hợp đồng'
+        ws['C7'] = data[1]
+        ws['B8'] = 'Họ tên'
+        ws['C8'] = data[2]
+        ws['B9'] = 'Ngày lập'
+        ws['C9'] = data[3]
+        ws['B10'] = 'Giá phòng'
+        ws['C10'] = data[4]
+        ws['B11'] = 'Số tiền'
+        ws['C11'] = data[5]
+        ws['B13'] = 'Tổng tiền:'
+        ws['C13'] = '3,200,000 đ'
+        
+        # Định dạng cột
+        ws.column_dimensions['B'].width = 20
+        ws.column_dimensions['C'].width = 20
+        ws.column_dimensions['D'].width = 15
+        
+        # Định dạng font và canh giữa
+        for row in range(1, 13):
+            for col in ['A', 'B', 'C']:
+                if ws[f'{col}{row}'].value:
+                    ws[f'{col}{row}'].font = Font(name='Arial', size=11)
+                    ws[f'{col}{row}'].alignment = Alignment(vertical='center')
+        
+        # In đậm tên cột
+        ws['A1'].font = Font(bold=True, size=12)
+        
+        # Thêm đường viền thick outside cho vùng từ A1 đến D14
+        from openpyxl.styles import Border, Side
+        
+        # Áp dụng viền bao quanh cho từng ô trong vùng A1:D14
+        for row in range(1, 15):  # 1 đến 14
+            for col in ['A', 'B', 'C', 'D']:
+                cell = ws[f'{col}{row}']
+                
+                # Khởi tạo border với style None (không có viền)
+                border = Border(
+                    left=Side(style=None),
+                    right=Side(style=None),
+                    top=Side(style=None),
+                    bottom=Side(style=None)
+                )
+                
+                # Đặt viền thick cho các ô ở biên ngoài
+                if row == 1:  # Dòng đầu tiên
+                    border.top = Side(style='thick')
+                if row == 14:  # Dòng cuối cùng
+                    border.bottom = Side(style='thick')
+                if col == 'A':  # Cột đầu tiên
+                    border.left = Side(style='thick')
+                if col == 'D':  # Cột cuối cùng
+                    border.right = Side(style='thick')
+                
+                # Áp dụng border cho ô
+                cell.border = border
+        
+        # Save file
+        wb.save('hoa_don.xlsx')
+        messagebox.showinfo("Thông báo", "Xuất hóa đơn thành công! File hoa_don.xlsx đã được tạo.")
+    
+    except Exception as e:
+        messagebox.showerror("Lỗi", f"Đã xảy ra lỗi: {e}")
+
 # Hàm chạy thử giao diện quản lý hóa đơn (đã loại bỏ chức năng tạo database)
 def run_test():
     root = tk.Tk()
@@ -546,14 +667,6 @@ def run_test():
     hoa_don_window = quan_ly_hoa_don(root)
     
     root.mainloop()
-
-# Để kết nối với trang chủ, sử dụng hàm này
-# Ví dụ sử dụng trong trang chủ:
-'''
-btn_quan_ly_hoa_don = tk.Button(home_window, text="Quản lý Hóa Đơn", 
-                                command=lambda: open_quan_ly_hoa_don(home_window))
-btn_quan_ly_hoa_don.pack()
-'''
 
 # Chạy thử nếu chạy trực tiếp file này
 if __name__ == "__main__":
