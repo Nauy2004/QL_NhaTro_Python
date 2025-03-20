@@ -1,0 +1,466 @@
+import sqlite3
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from tkinter import ttk
+import os
+from pathlib import Path
+
+class DashboardApp:
+    def __init__(self, parent_frame, db_path):
+        self.parent_frame = parent_frame
+        self.db_path = db_path
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+        self.create_widgets()
+        self.db_path = db_path
+        
+        # Kiểm tra kết nối database
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+            print("Kết nối database thành công!")
+        except Exception as e:
+            print(f"Lỗi kết nối database: {e}")
+            return
+        
+        # Tạo giao diện dashboard
+        self.create_widgets()
+        
+    def create_widgets(self):
+        # Main frame
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Title
+        title_label = ttk.Label(main_frame, text="DASHBOARD QUẢN LÝ PHÒNG TRỌ", font=("Arial", 16, "bold"))
+        title_label.pack(pady=10)
+        
+        # Tabs
+        tab_control = ttk.Notebook(main_frame)
+        
+        # Tab 1: Thống kê tổng quan
+        tab1 = ttk.Frame(tab_control)
+        tab_control.add(tab1, text="Thống kê tổng quan")
+        self.create_overview_tab(tab1)
+        
+        # Tab 2: Thống kê phòng
+        tab2 = ttk.Frame(tab_control)
+        tab_control.add(tab2, text="Thống kê phòng")
+        self.create_room_stats_tab(tab2)
+        
+        # Tab 3: Thống kê hợp đồng
+        tab3 = ttk.Frame(tab_control)
+        tab_control.add(tab3, text="Thống kê hợp đồng")
+        self.create_contract_stats_tab(tab3)
+        
+        # Tab 4: Thống kê người thuê
+        tab4 = ttk.Frame(tab_control)
+        tab_control.add(tab4, text="Thống kê người thuê")
+        self.create_tenant_stats_tab(tab4)
+        
+        tab_control.pack(expand=1, fill=tk.BOTH)
+        
+    def create_overview_tab(self, tab):
+        # Frame cho thông tin tổng quan
+        frame = ttk.Frame(tab)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Lấy thông tin tổng quan
+        stats = self.get_overview_stats()
+        
+        # Tạo khung chứa các card thông tin
+        info_frame = ttk.Frame(frame)
+        info_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Card 1: Tổng số phòng
+        card1 = tk.Frame(info_frame, bg="#4e73df", bd=1, relief=tk.RAISED)
+        card1.grid(row=0, column=0, padx=10, pady=10)
+        
+        label1 = tk.Label(card1, text="TỔNG SỐ PHÒNG", font=("Arial", 12), bg="#4e73df", fg="white")
+        label1.pack(padx=20, pady=10)
+        
+        value1 = tk.Label(card1, text=str(stats["total_rooms"]), font=("Arial", 24, "bold"), bg="#4e73df", fg="white")
+        value1.pack(padx=20, pady=10)
+        
+        # Card 2: Số phòng đang thuê
+        card2 = tk.Frame(info_frame, bg="#1cc88a", bd=1, relief=tk.RAISED)
+        card2.grid(row=0, column=1, padx=10, pady=10)
+        
+        label2 = tk.Label(card2, text="PHÒNG ĐANG THUÊ", font=("Arial", 12), bg="#1cc88a", fg="white")
+        label2.pack(padx=20, pady=10)
+        
+        value2 = tk.Label(card2, text=str(stats["occupied_rooms"]), font=("Arial", 24, "bold"), bg="#1cc88a", fg="white")
+        value2.pack(padx=20, pady=10)
+        
+        # Card 3: Số phòng trống
+        card3 = tk.Frame(info_frame, bg="#36b9cc", bd=1, relief=tk.RAISED)
+        card3.grid(row=0, column=2, padx=10, pady=10)
+        
+        label3 = tk.Label(card3, text="PHÒNG TRỐNG", font=("Arial", 12), bg="#36b9cc", fg="white")
+        label3.pack(padx=20, pady=10)
+        
+        value3 = tk.Label(card3, text=str(stats["vacant_rooms"]), font=("Arial", 24, "bold"), bg="#36b9cc", fg="white")
+        value3.pack(padx=20, pady=10)
+        
+        # Card 4: Tổng số người thuê
+        card4 = tk.Frame(info_frame, bg="#f6c23e", bd=1, relief=tk.RAISED)
+        card4.grid(row=0, column=3, padx=10, pady=10)
+        
+        label4 = tk.Label(card4, text="TỔNG NGƯỜI THUÊ", font=("Arial", 12), bg="#f6c23e", fg="white")
+        label4.pack(padx=20, pady=10)
+        
+        value4 = tk.Label(card4, text=str(stats["total_tenants"]), font=("Arial", 24, "bold"), bg="#f6c23e", fg="white")
+        value4.pack(padx=20, pady=10)
+        
+        # Tạo khung chứa các biểu đồ
+        charts_frame = ttk.Frame(frame)
+        charts_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Biểu đồ tròn: Trạng thái phòng
+        fig1, ax1 = plt.subplots(figsize=(5, 4))
+        labels = ['Đang thuê', 'Trống']
+        sizes = [stats["occupied_rooms"], stats["vacant_rooms"]]
+        colors = ['#1cc88a', '#36b9cc']
+        ax1.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
+        ax1.axis('equal')
+        ax1.set_title("Tỷ lệ trạng thái phòng")
+        
+        chart_frame1 = ttk.Frame(charts_frame)
+        chart_frame1.grid(row=0, column=0, padx=5, pady=5)
+        
+        canvas1 = FigureCanvasTkAgg(fig1, master=chart_frame1)
+        canvas1.draw()
+        canvas1.get_tk_widget().pack()
+        
+        # Biểu đồ cột: Doanh thu theo tháng
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
+        months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12']
+        revenue = self.get_monthly_revenue()
+        ax2.bar(months, revenue, color='#4e73df')
+        ax2.set_title("Doanh thu theo tháng")
+        ax2.set_xlabel("Tháng")
+        ax2.set_ylabel("Doanh thu (VNĐ)")
+        
+        chart_frame2 = ttk.Frame(charts_frame)
+        chart_frame2.grid(row=0, column=1, padx=5, pady=5)
+        
+        canvas2 = FigureCanvasTkAgg(fig2, master=chart_frame2)
+        canvas2.draw()
+        canvas2.get_tk_widget().pack()
+    
+    def create_room_stats_tab(self, tab):
+        # Frame chính cho tab thống kê phòng
+        frame = ttk.Frame(tab)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Biểu đồ giá phòng
+        fig1, ax1 = plt.subplots(figsize=(10, 4))
+        room_data = self.get_room_price_data()
+        
+        if room_data:
+            rooms = [r[0] for r in room_data]
+            prices = [r[1] for r in room_data]
+            
+            ax1.bar(rooms, prices, color='#4e73df')
+            ax1.set_title("Giá phòng")
+            ax1.set_xlabel("Mã phòng")
+            ax1.set_ylabel("Giá (VNĐ)")
+            plt.xticks(rotation=45)
+            
+            chart_frame1 = ttk.Frame(frame)
+            chart_frame1.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            canvas1 = FigureCanvasTkAgg(fig1, master=chart_frame1)
+            canvas1.draw()
+            canvas1.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Biểu đồ trạng thái phòng
+        fig2, ax2 = plt.subplots(figsize=(8, 4))
+        status_data = self.get_room_status_data()
+        
+        if status_data:
+            statuses = list(status_data.keys())
+            counts = list(status_data.values())
+            
+            ax2.bar(statuses, counts, color=['#1cc88a', '#36b9cc', '#e74a3b'])
+            ax2.set_title("Trạng thái phòng")
+            ax2.set_xlabel("Trạng thái")
+            ax2.set_ylabel("Số lượng")
+            
+            chart_frame2 = ttk.Frame(frame)
+            chart_frame2.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            canvas2 = FigureCanvasTkAgg(fig2, master=chart_frame2)
+            canvas2.draw()
+            canvas2.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    
+    def create_contract_stats_tab(self, tab):
+        # Frame chính cho tab thống kê hợp đồng
+        frame = ttk.Frame(tab)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Biểu đồ số lượng hợp đồng theo tháng
+        fig1, ax1 = plt.subplots(figsize=(10, 4))
+        contract_data = self.get_contract_monthly_data()
+        
+        if contract_data:
+            months = list(contract_data.keys())
+            counts = list(contract_data.values())
+            
+            ax1.plot(months, counts, marker='o', color='#4e73df', linewidth=2)
+            ax1.set_title("Số lượng hợp đồng theo tháng")
+            ax1.set_xlabel("Tháng")
+            ax1.set_ylabel("Số lượng")
+            plt.xticks(rotation=45)
+            
+            chart_frame1 = ttk.Frame(frame)
+            chart_frame1.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            canvas1 = FigureCanvasTkAgg(fig1, master=chart_frame1)
+            canvas1.draw()
+            canvas1.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Biểu đồ tổng giá trị hợp đồng
+        fig2, ax2 = plt.subplots(figsize=(10, 4))
+        value_data = self.get_contract_value_data()
+        
+        if value_data:
+            rooms = [v[0] for v in value_data]
+            values = [v[1] for v in value_data]
+            
+            ax2.bar(rooms, values, color='#1cc88a')
+            ax2.set_title("Tổng giá trị hợp đồng theo phòng")
+            ax2.set_xlabel("Mã phòng")
+            ax2.set_ylabel("Giá trị (VNĐ)")
+            plt.xticks(rotation=45)
+            
+            chart_frame2 = ttk.Frame(frame)
+            chart_frame2.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            canvas2 = FigureCanvasTkAgg(fig2, master=chart_frame2)
+            canvas2.draw()
+            canvas2.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    
+    def create_tenant_stats_tab(self, tab):
+        # Frame chính cho tab thống kê người thuê
+        frame = ttk.Frame(tab)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Biểu đồ phân bố người thuê theo địa chỉ
+        fig1, ax1 = plt.subplots(figsize=(10, 4))
+        tenant_location_data = self.get_tenant_location_data()
+        
+        if tenant_location_data:
+            locations = list(tenant_location_data.keys())
+            counts = list(tenant_location_data.values())
+            
+            ax1.bar(locations, counts, color='#4e73df')
+            ax1.set_title("Phân bố người thuê theo địa chỉ")
+            ax1.set_xlabel("Địa chỉ")
+            ax1.set_ylabel("Số lượng")
+            plt.xticks(rotation=45)
+            
+            chart_frame1 = ttk.Frame(frame)
+            chart_frame1.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            canvas1 = FigureCanvasTkAgg(fig1, master=chart_frame1)
+            canvas1.draw()
+            canvas1.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    
+    def get_overview_stats(self):
+        """Lấy thống kê tổng quan"""
+        cursor = self.conn.cursor()
+        
+        # Giả lập dữ liệu khi chưa có thông tin chi tiết về cấu trúc DB
+        stats = {
+            "total_rooms": 0,
+            "occupied_rooms": 0,
+            "vacant_rooms": 0,
+            "total_tenants": 0
+        }
+        
+        # Thử truy vấn tổng số phòng từ bảng PhongTro
+        try:
+            cursor.execute("SELECT COUNT(*) FROM PhongTro")
+            stats["total_rooms"] = cursor.fetchone()[0]
+        except:
+            # Nếu không có bảng PhongTro, dùng bảng HoaDon để ước lượng
+            try:
+                cursor.execute("SELECT COUNT(DISTINCT MaPhong) FROM HoaDon")
+                stats["total_rooms"] = cursor.fetchone()[0]
+            except:
+                stats["total_rooms"] = 10  # Giá trị mặc định nếu không truy vấn được
+        
+        # Thử truy vấn số người thuê từ bảng NguoiThue
+        try:
+            cursor.execute("SELECT COUNT(*) FROM NguoiThue")
+            stats["total_tenants"] = cursor.fetchone()[0]
+        except:
+            stats["total_tenants"] = 15  # Giá trị mặc định
+        
+        # Giả lập số phòng đang thuê và còn trống
+        stats["occupied_rooms"] = int(stats["total_rooms"] * 0.7)  # Giả sử 70% phòng có người thuê
+        stats["vacant_rooms"] = stats["total_rooms"] - stats["occupied_rooms"]
+        
+        return stats
+    
+    def get_monthly_revenue(self):
+        """Lấy doanh thu theo tháng"""
+        cursor = self.conn.cursor()
+        
+        # Giả lập dữ liệu doanh thu
+        # Trong thực tế, sẽ truy vấn từ bảng hóa đơn hoặc hợp đồng
+        revenue = [500000, 550000, 480000, 620000, 580000, 600000, 
+                  650000, 700000, 720000, 680000, 650000, 700000]
+        
+        # Thử truy vấn từ bảng HoaDon nếu có
+        try:
+            monthly_revenue = [0] * 12
+            cursor.execute("SELECT CAST(strftime('%m', NgayLap) AS INTEGER), SUM(SoTien) FROM HoaDon GROUP BY strftime('%m', NgayLap)")
+            for row in cursor.fetchall():
+                month_idx = int(row[0]) - 1  # Chuyển tháng 1-12 thành index 0-11
+                monthly_revenue[month_idx] = row[1]
+            
+            if any(monthly_revenue):  # Nếu có dữ liệu thật
+                revenue = monthly_revenue
+        except:
+            pass  # Giữ dữ liệu giả lập nếu truy vấn lỗi
+        
+        return revenue
+    
+    def get_room_price_data(self):
+        """Lấy dữ liệu giá phòng"""
+        cursor = self.conn.cursor()
+        
+        # Giả lập dữ liệu
+        room_data = [
+            ("P001", 1200000),
+            ("P002", 1500000),
+            ("P003", 1300000),
+            ("P004", 1800000),
+            ("P005", 2000000)
+        ]
+        
+        # Thử truy vấn từ bảng PhongTro hoặc tương tự
+        try:
+            cursor.execute("SELECT MaPhong, GiaPhong FROM PhongTro ORDER BY MaPhong")
+            result = cursor.fetchall()
+            if result:
+                room_data = result
+        except:
+            pass
+        
+        return room_data
+    
+    def get_room_status_data(self):
+        """Lấy dữ liệu trạng thái phòng"""
+        cursor = self.conn.cursor()
+        
+        # Giả lập dữ liệu
+        status_data = {
+            "Đang thuê": 7,
+            "Trống": 3,
+            "Bảo trì": 1
+        }
+        
+        # Thử truy vấn từ bảng PhongTro
+        try:
+            cursor.execute("SELECT TrangThai, COUNT(*) FROM PhongTro GROUP BY TrangThai")
+            result = cursor.fetchall()
+            if result:
+                status_data = {row[0]: row[1] for row in result}
+        except:
+            pass
+        
+        return status_data
+    
+    def get_contract_monthly_data(self):
+        """Lấy dữ liệu số lượng hợp đồng theo tháng"""
+        cursor = self.conn.cursor()
+        
+        # Giả lập dữ liệu
+        contract_data = {
+            "T1": 3, "T2": 2, "T3": 1, "T4": 4, "T5": 2, "T6": 3,
+            "T7": 5, "T8": 4, "T9": 2, "T10": 3, "T11": 2, "T12": 4
+        }
+        
+        # Thử truy vấn từ bảng ChiTietHoaDon
+        try:
+            cursor.execute("SELECT strftime('%m', NgayLap), COUNT(*) FROM ChiTietHoaDon GROUP BY strftime('%m', NgayLap)")
+            result = cursor.fetchall()
+            if result:
+                contract_data = {f"T{row[0]}": row[1] for row in result}
+        except:
+            pass
+        
+        return contract_data
+    
+    def get_contract_value_data(self):
+        """Lấy dữ liệu giá trị hợp đồng theo phòng"""
+        cursor = self.conn.cursor()
+        
+        # Giả lập dữ liệu
+        value_data = [
+            ("P001", 12000000),
+            ("P002", 18000000),
+            ("P003", 15000000),
+            ("P004", 24000000),
+            ("P005", 30000000)
+        ]
+        
+        # Thử truy vấn từ bảng HoaDon hoặc ChiTietHoaDon
+        try:
+            cursor.execute("SELECT MaPhong, SUM(ThanhTien) FROM ChiTietHoaDon GROUP BY MaPhong ORDER BY MaPhong")
+            result = cursor.fetchall()
+            if result:
+                value_data = result
+        except:
+            pass
+        
+        return value_data
+    
+    def get_tenant_location_data(self):
+        """Lấy dữ liệu phân bố người thuê theo địa chỉ"""
+        cursor = self.conn.cursor()
+        
+        # Giả lập dữ liệu
+        location_data = {
+            "Hà Nội": 5,
+            "TP HCM": 3,
+            "Đà Nẵng": 2,
+            "Hải Phòng": 1,
+            "Khác": 4
+        }
+        
+        # Thử truy vấn từ bảng NguoiThue
+        try:
+            cursor.execute("SELECT DiaChi, COUNT(*) FROM NguoiThue GROUP BY DiaChi")
+            result = cursor.fetchall()
+            if result:
+                location_data = {row[0]: row[1] for row in result}
+        except:
+            pass
+        
+        return location_data
+
+def main():
+    # Xác định đường dẫn đến file database
+    data_path = "../Data/BTL_QLPT.db"
+    
+    # Kiểm tra xem file tồn tại không
+    if not os.path.exists(data_path):
+        print(f"Không tìm thấy file database tại: {data_path}")
+        # Thử tìm ở vị trí khác
+        data_path = os.path.join(os.getcwd(), "Data", "BTL_QLPT.db")
+        if not os.path.exists(data_path):
+            print(f"Không tìm thấy file database tại: {data_path}")
+            print("Vui lòng chỉ định đúng đường dẫn file database")
+            return
+    
+    # Tạo cửa sổ ứng dụng
+    root = tk.Tk()
+    app = DashboardApp(root, data_path)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()

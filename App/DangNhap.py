@@ -1,7 +1,8 @@
 from tkinter import *
 from tkinter import messagebox
 import sqlite3
-import subprocess
+import sys
+import os
 
 username = ""
 
@@ -17,7 +18,9 @@ def dang_nhap():
 
     if user:
         window.destroy()
-        subprocess.run(["python", "../App/TrangChu.py"])  # Mở ứng dụng chính
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'App')))
+        import TrangChu
+        TrangChu.trang_chu()
     else:
         messagebox.showerror("Lỗi đăng nhập", "Tài khoản hoặc mật khẩu không đúng!")
 
